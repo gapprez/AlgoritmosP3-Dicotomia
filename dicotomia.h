@@ -2,64 +2,60 @@
 #include <string.h>
 
 // Constantes Algoritmo Dicotomia
-#define UMBRAL_DICO 10
-
+#define UMBRAL_DICO 0.05
 #define NUM_SITUATIONS 3
-#define NUM_FUNCT 5
+
 #define NUM_ALGORITHEMS 2
+#define NUM_FUNCT 2
+#ifndef NUM_TIEMPOS
+#define NUM_TIEMPOS 6
+#endif
+#ifndef MAX_FALLOS
+#define MAX_FALLOS (int) 2
+#endif
 
  /* Registros DICOTOMIA */
 
-typedef struct {
-	char name[256];
-	int isComplex;
-	int index;
-} funcion;
+
 
 typedef  struct {
-	funcion cota;
+	char name[256];
+	int tipo;
 	double exp;
 }cota_t;
-
-typedef struct {
-	int is_under_500;
-	double tiempo;
-} time_dico;
 
 typedef struct {
 	cota_t sobre;
 	cota_t ajus;
 	cota_t sub;
-	time_dico tiempos;
 	int tamV;
 	void (*func)(int v[], int nargs);
 	char sit_name[256];
 } sit_dico;
 
 typedef struct {
-	sit_dico situation[NUM_SITUATIONS];
 	int ini;
 	int fin;
 	int mult;
-	int nTemp;
-	void (*func)(int v[], int nargs);
+	void (*func)(int v[], int n);
 	char alg_name[256];
-} alg_dico;
+} tAlgoritmo;
 
 /* FIN REGISTROS DICOTOMIA  */
 
-double execute(funcion op , int n, double exp, int derivada);
+double execute(cota_t op , double n, int derivada);
 
-void initFuncs(funcion *funcs);
-void printFuncs(funcion *funcs);
-void initCotas(funcion funcs[], cota_t *cotas, int *nCotas);
-void sortCotas(cota_t *cotas, int nCotas, int punto);
+void initFuncs(cota_t funcs[]);
+void printFuncs(cota_t *funcs);
+void initCotas(cota_t funcs[], cota_t *cotas, int *nCotas);
+void sortCotas(cota_t *cotas, int nCotas, double punto);
 void printCotas(cota_t *cotas, int nCotas);
+int conseguirCotas (tAlgoritmo algoritmo, double tiempos[], cota_t* cotas, int inicio, int fin, cota_t cotasFinales[3]);
 
-alg_dico initAlgorithems(alg_dico *algoritmos);
+tAlgoritmo initAlgorithems(tAlgoritmo algoritmos[NUM_ALGORITHEMS]);
 sit_dico initStudyCase(char *name, void (*ini)(int [], int));
-alg_dico initAlgorithem(char *name, void (*func)(int [], int), sit_dico sitDico[], int ini, int mult,
-                        int fin, int nTemp);
-void printAlgorithemSituation(alg_dico *algoritmos);
+tAlgoritmo initAlgorithem(char *name, void (*func)(int [], int), int ini, int mult,
+                        int fin);
+void printAlgorithemSituation(tAlgoritmo *algoritmos);
 
-void acotarComplejidad(alg_dico *algoritmos, cota_t *cotas);
+void acotarComplejidad(tAlgoritmo *algoritmos, cota_t *cotas);

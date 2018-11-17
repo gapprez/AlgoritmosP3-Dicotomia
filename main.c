@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "dicotomia.h"
 
@@ -37,6 +38,26 @@ int dispersionA(char *clave, int tamTabla) {
 	return valor % tamTabla;
 }
 
+int dispersionB(char *clave, int tamTabla) {
+	int i, n = MIN(8, strlen(clave));
+	unsigned int valor = clave[0];
+	for (i = 1; i < n; i++)
+		valor = (valor<<5) + clave[i]; /* el desplazamiento de 5 bits equivale a */
+	return valor % tamTabla; /* multipicar por 32 */
+}
+
+unsigned int resolDoble(int pos_ini, int num_intento) {
+	return (unsigned int) 10007 - pos_ini % 10007;
+}
+
+unsigned int resolN(int pos_ini, int num_intento) {
+	return (unsigned int) num_intento;
+}
+
+unsigned int resolCuadratica(int pos_ini, int num_intento) {
+	return (unsigned int) pow(num_intento, 2);
+}
+
 int ndispersion(char *clave, int tamTabla) {
 	if (strcmp(clave, "ANA")==0) return 7;
 	if (strcmp(clave, "JOSE")==0) return 7;
@@ -70,16 +91,27 @@ int leer_sinonimos(item datos[]) {
 	return(i);
 }
 
+void inicializar_cerrada(tabla_cerrada *diccionario, int tam) {
+	int i;
+
+	for (i = 0; i<tam; i++) {
+		(*diccionario)[i].ocupada = 0;
+		strcpy((*diccionario)[i].clave,"");
+		strcpy((*diccionario)[i].sinonimos,"");
+	}
+}
+
 pos buscar_cerrada(char *clave, tabla_cerrada diccionario, int tam,
                    int *colisiones, int (*dispersion)(char *, int),
                    unsigned int (*resol_colision)(int pos_ini, int num_intento)){
 	int x = dispersion(clave, tam);
 	int posActual = x;
 
-	while ((diccionario[posActual].ocupada)&&(diccionario[posActual].clave != clave)){
+	while ((diccionario[posActual].ocupada) && (strcmp(diccionario[posActual].clave,clave))) {
 		*colisiones = *colisiones + 1;
-		posActual = (x + resol_colision(x,*colisiones)) % MAX_N;
+		posActual = (x + resol_colision(x, *colisiones)) % tam;
 	}
+
 
 	return posActual;
 }
@@ -87,16 +119,31 @@ pos buscar_cerrada(char *clave, tabla_cerrada diccionario, int tam,
 int insertar_cerrada(char *clave, char *sinonimos,
                      tabla_cerrada *diccionario, int tam,
                      int (*dispersion)(char *, int),
-                     unsigned int (*resol_colision)(int pos_ini, int num_intento));
+                     unsigned int (*resol_colision)(int pos_ini, int num_intento)) {
+	int colisiones = 0;
+	pos pos = buscar_cerrada(clave, *diccionario, tam, &colisiones, dispersion, resol_colision);
+
+	if ((*diccionario)[pos].ocupada == 0) {
+		(*diccionario)[pos].ocupada = 1;
+		strcpy((*diccionario)[pos].clave,clave);
+		strcpy((*diccionario)[pos].sinonimos, sinonimos);
+		return colisiones;
+	}
+	else
+		printf("%d, %d", (*diccionario)[pos].ocupada, pos);
+
+	return -1;
+
+}
 
 void mostrar_cerrada(tabla_cerrada diccionario, int tam){
 	int i;
 
-	printf("{");
+	printf("{\n");
 	for(i = 0; i<tam; i++){
-		printf("%d- %s\n",i,diccionario->clave);
+		printf("%d- %s\n",i,diccionario[i].clave);
 	}
-	printf("}");
+	printf("}\n");
 
 }
 
@@ -137,69 +184,12 @@ void descendente (int v[], int n){
 	}
 }
 
-/*  */
-/*
- * DONE Leer los tiempos de un algoritmo en una situacion concreta
- */
-void leerTiempos(alg_dico algoritmo, sit_dico situacion, time_dico *tiempos, int *tamV){
-	double ta, tb, t, ti;
-	int k, n, i;
-	int *v;
-
-	void (*ini)(int [], int) = situacion.func;
-	void (*ord)(int [], int) = algoritmo.func;
-
-	//Crear objeto algoritmo
-	int inicio = algoritmo.ini;
-	int fin = algoritmo.fin;
-	int mult = algoritmo.mult;
-
-	i = 0;
-
-	for (n = inicio; n <= fin; n = n * mult) {
-		v = malloc(sizeof(int) * n);
-		ini(v, n);
-		ta = microsegundos();
-		ord(v, n);
-		tb = microsegundos();
-		t = tb - ta;
-		tamV[i]=n;
-
-		if (t < 500) {
-			ta = microsegundos();
-			for (k = 0; k < 1000; k++) {
-				ini(v, n);
-				ord(v, n);
-			}
-			tb = microsegundos();
-			t = tb - ta;
-
-			ta = microsegundos();
-			for (k = 0; k < 1000; k++) {
-				ini(v, n);
-			}
-			tb = microsegundos();
-
-			ti = tb - ta;
-			t = (t - ti) / k;
-
-			// DONE > guardar tiempo con *
-			tiempos[i] = (time_dico){1,t};
-		} else {
-			// DONE > guardar tiempo
-			tiempos[i] = (time_dico){0,t};
-		}
-		i++;
-		free(v);
-	}
-}
-
 void printDerivInPoint(cota_t *cotas, int nCotas, int point){
 
 	int i;
 
 	for(i=0; i<nCotas; i++){
-		printf(" %f,", execute(cotas[i].cota,point,cotas[i].exp,1));
+		printf(" %f,", execute(cotas[i],point, 1));
 	}
 	printf("\n");
 }
@@ -278,104 +268,101 @@ void ord_rapida(int v[], int n) {
 	}
 }
 
-/*
- * DONE - inicialización del los algoritmos de los que realizaremos el estudio
- */
-alg_dico initAlgorithems(alg_dico *algoritmos){
-	// Esta parte la cambiariamos para cada problema a estudiar,
-	// por ejemplo si no hace falta ordenar no habria estas funciones
-	printf(" - Inicializando Algoritmos \n");
-	printf(" ************************************ \n");
-	sit_dico situations[NUM_SITUATIONS] = {
-			initStudyCase(" vector aleatorio", aleatorio),
-			initStudyCase("vector ascendente",ascendente),
-			initStudyCase("vector descendente", descendente)
-	};
+void leerTiempos(const tAlgoritmo algoritmo, double tiempos[]) {
+	int n, i = 0, k;
+	int *v;
+	double ta, tb, ti, t;
+	int inicio = algoritmo.ini;
+	int fin = algoritmo.fin;
+	int mult = algoritmo.mult;
 
-	alg_dico aux [NUM_ALGORITHEMS] = {
-			initAlgorithem("inserción",ord_ins , situations, 500, 2, 32000, 7),
-			initAlgorithem("rápida", ord_rapida, situations, 1000, (int) pow(10,8), 10, 6)
-	};
+	for (n = inicio; n <= fin; n = n * mult) {
+		v = malloc(sizeof(int) * n);
+		ascendente(v, n);
+		ta = microsegundos();
+		algoritmo.func(v, n);
+		tb = microsegundos();
+		t = tb - ta;
 
-	memcpy(algoritmos, aux, NUM_ALGORITHEMS * sizeof(alg_dico));
-	printf("\n");
-}
+		if (t < 500) {
+			ta = microsegundos();
+			for (k = 0; k < 1000; k++) {
+				ascendente(v, n);
+				algoritmo.func(v, n);
+			}
+			tb = microsegundos();
+			t = tb - ta;
 
-/*
- * DONE - funciones que se usaran para el calculo de las cotas
- */
-void initFuncs(funcion *funcs){
+			ta = microsegundos();
+			for (k = 0; k < 1000; k++) {
+				ascendente(v, n);
+			}
+			tb = microsegundos();
 
-	printf(" ************************************ \n\n");
-	printf(" - Definiendo Funciones \n");
-	printf(" ************************************ \n");
-	funcion LOG = {"log(n)",0,0};
-	funcion N = {"n",0,1};
-	funcion NxLogN = {"n*log(n)",0,2};
-	funcion Nexp_x = {"n^$",1,3};
-	funcion Nexp_x_LOG = {"n^$*log(n)",1,4};
+			ti = tb - ta;
+			t = (t - ti) / k;
 
-	funcs[0] = LOG;
-	funcs[1] = N;
-	funcs[2] = NxLogN;
-	funcs[3] = Nexp_x;
-	funcs[4] = Nexp_x_LOG;
-	printf("\n");
-
-}
-
-double execute(funcion op , int n, double exp, int derivada){
-
-	if (!derivada) {
-
-		switch (op.index) {
-			case 0:
-				return log(n);
-			case 1:
-				return n;
-			case 2:
-				return n*log(n);
-			case 3:
-				return pow(n,exp);
-			case 4:
-				return pow(n,exp)*log(n);
-			default:
-				return -1;
 		}
-
-	} else {
-
-		switch (op.index) {
-			case 0:
-				return 1.0/n;
-			case 1:
-				return 1;
-			case 2:
-				return log(n)+(1);
-			case 3:
-				return exp*pow(n,exp-1);
-			case 4:
-				return ((n*exp)*log(n))+(pow(n,exp)*1/n);
-			default:
-				return -1;
-		}
+		tiempos[i] = t;
+		i++;
+		free(v);
 	}
 }
 
+void test(unsigned int (*resol_colision)(int, int)) {
+	int tam = 11;
+	int colTotal = 0;
+	int i = 0;
+	pos pos;
+	tabla_cerrada diccionario = malloc(sizeof(entrada)*tam);
+	char* nombres[7] = {"ANA", "LUIS", "JOSE", "OLGA", "ROSA", "IVAN", "CARLOS"};
+
+	inicializar_cerrada(&diccionario, tam);
+
+
+	for (i = 0; i < 6; i++) {
+		colTotal += insertar_cerrada(nombres[i], "", &diccionario, tam, ndispersion, resol_colision);
+	}
+	mostrar_cerrada(diccionario, tam);
+	printf("Numero total de colisiones al insertar los elementos: %d\n\n", colTotal);
+	colTotal = 0;
+
+	for (i = 0; i < 7; i++) {
+		pos = buscar_cerrada(nombres[i], diccionario, tam, &colTotal, ndispersion, resol_colision);
+		if (diccionario[pos].ocupada)
+			printf("Al buscar: %s, encuentro: %s, colisiones: %d\n", nombres[i], diccionario[pos].clave, colTotal);
+		else
+			printf("No encuentro: %s, colisiones: %d\n", nombres[i], colTotal);
+		colTotal = 0;
+	}
+
+	printf("\n");
+	free(diccionario);
+}
 
 int main() {
 
-	int nCotas;
+	/*int nCotas = 0;
+	int fallado = 0;
 
-	funcion funcs[NUM_FUNCT];
-	alg_dico algoritmos[NUM_ALGORITHEMS];
-	cota_t *cotasEstudio = malloc(sizeof(cota_t)*100);
+	double tiempos[NUM_TIEMPOS];
+	cota_t funcs[NUM_FUNCT];
+	cota_t *cotasEstudio;
+	cota_t cotasFinales[3];
+	cotasEstudio = malloc(sizeof(cota_t)*100);
+	tAlgoritmo insercion;
+	insercion.ini = 500; insercion.ini = 1000;
+	insercion.fin = 32000; insercion.fin = (int) pow(10, 8);
+	insercion.mult = 2; insercion.mult = 10;
+	insercion.func = ord_ins; insercion.func = ord_rapida;
+	strcpy(insercion.alg_name,"Insercion");
+	inicializar_semilla();
 
 	// Inicializamos el muestrario de funciones y los algoritmos de estudio
 	initFuncs(funcs);
 	printFuncs(funcs);
-	initAlgorithems(algoritmos);
-	printAlgorithemSituation(algoritmos);
+	//initAlgorithems(algoritmos);
+	//printAlgorithemSituation(algoritmos);
 	// Generamos las Posibles cotas
 	initCotas(funcs, cotasEstudio, &nCotas);
 	printCotas(cotasEstudio, nCotas);
@@ -383,10 +370,34 @@ int main() {
 	// Ordenamos las Posibles Cotas basándonos en la pendiente de las funciones en un punto
 	// representativo del intervalo en el que se realiza el estudio
 	// printDerivInPoint(cotasEstudio, nCotas, 20000);
-	sortCotas(cotasEstudio, nCotas, 20000);
-
+	sortCotas(cotasEstudio, nCotas, pow(10, 8));
 	printCotas(cotasEstudio, nCotas);
 
+	leerTiempos(insercion, tiempos);
+	insercion.ini = 500; insercion.ini = 1000;
+	insercion.fin = 32000; insercion.fin = (int) pow(10, 8);
+	insercion.mult = 2; insercion.mult = 10;
+	insercion.func = ord_ins; //insercion.func = ord_rapida;
+	leerTiempos(insercion, tiempos);
+	insercion.ini = 500; insercion.ini = 1000;
+	insercion.fin = 32000; insercion.fin = (int) pow(10, 8);
+	insercion.mult = 2; insercion.mult = 10;
+	insercion.func = ord_ins; //insercion.func = ord_rapida;
+
+	while (!conseguirCotas(insercion, tiempos, cotasEstudio, 0, nCotas-1, cotasFinales)) {
+		leerTiempos(insercion, tiempos);
+		insercion.ini = 500; insercion.ini = 1000;
+		insercion.fin = 32000; insercion.fin = (int) pow(10, 8);
+		insercion.mult = 2; insercion.mult = 10;
+		insercion.func = ord_ins; //insercion.func = ord_rapida;
+		fallado++;
+	}
+
+	printf("El calculo ha fallado %d veces\n", fallado);
+	printf("Las cotas finales son:\n");
+	printf("cota subestimada -> %s\n", cotasFinales[0].name);
+	printf("cota ajustada -> %s\n", cotasFinales[1].name);
+	printf("cota subestimada -> %s\n", cotasFinales[2].name);
 	//medirTiempos();
 	//acorarComplejidad();
 
@@ -396,5 +407,15 @@ int main() {
 
 
 	free(cotasEstudio);
-	return 0;
+	return 0;*/
+	tabla_cerrada diccionario;
+	test(resolN);
+	test(resolCuadratica);
+	test(resolDoble);
+
+	/*diccionario = malloc(MAX_N*sizeof(entrada));
+	inicializar_cerrada(&diccionario, MAX_N);
+	leer_sinonimos(&diccionario);*/
+
+	//free(diccionario);
 }
