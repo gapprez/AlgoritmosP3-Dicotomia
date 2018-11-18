@@ -10,9 +10,9 @@
 #define LONGITUD_CLAVE 30
 #define LONGITUD_SINONIMOS 300
 #define MAX_N 38197
+#define NUM_ENTRADAS 19062
 
 #define UMBRAL 10
-
 
 typedef int pos;
 
@@ -29,6 +29,10 @@ typedef struct {
 	char sinonimos [LONGITUD_SINONIMOS];
 } item;
 
+typedef struct {
+	char* nombre;
+	unsigned int (* func)(int, int);
+} resol;
 
 int dispersionA(char *clave, int tamTabla) {
 	int i, valor = clave[0], n = MIN(8, strlen(clave));
@@ -47,7 +51,7 @@ int dispersionB(char *clave, int tamTabla) {
 }
 
 unsigned int resolDoble(int pos_ini, int num_intento) {
-	return (unsigned int) 10007 - pos_ini % 10007;
+	return (unsigned int) num_intento * (10007 - (pos_ini % 10007));
 }
 
 unsigned int resolN(int pos_ini, int num_intento) {
@@ -111,8 +115,6 @@ pos buscar_cerrada(char *clave, tabla_cerrada diccionario, int tam,
 		*colisiones = *colisiones + 1;
 		posActual = (x + resol_colision(x, *colisiones)) % tam;
 	}
-
-
 	return posActual;
 }
 
@@ -129,9 +131,8 @@ int insertar_cerrada(char *clave, char *sinonimos,
 		strcpy((*diccionario)[pos].sinonimos, sinonimos);
 		return colisiones;
 	}
-	else
-		printf("%d, %d", (*diccionario)[pos].ocupada, pos);
 
+	printf("La posicion esta ocupada\n");
 	return -1;
 
 }
@@ -155,147 +156,47 @@ double microsegundos(){
 	return (t.tv_usec + t.tv_sec * 1000000.0);
 }/* obtiene la hora actual en microsegundos */
 
-
-
-/* INICIALIZACIÖN DEL VECTOR */
-
 void inicializar_semilla() {
 	srand(time(NULL));
 }
 
-void aleatorio(int v [], int n) {/* se generan números pseudoaleatorio entre -n y +n */
-	int i, m=2*n+1;
-	for (i=0; i < n; i++)
-		v[i] = (rand() % m) - n;
-}
-
-void ascendente(int v [], int n) {
-	int i;
-	for (i=0; i < n; i++)
-		v[i] = i;
-}
-
-
-void descendente (int v[], int n){
-	int i;
-
-	for (i = 0; i < n; i++) {
-		v[i] = n - i - 1;
-	}
-}
-
-void printDerivInPoint(cota_t *cotas, int nCotas, int point){
-
-	int i;
-
-	for(i=0; i<nCotas; i++){
-		printf(" %f,", execute(cotas[i],point, 1));
-	}
-	printf("\n");
-}
-
-// EJEMPLO PARA EL ALGORITMO DE DICOTOMIA
-/*Algoritmos de ordenación*/
-
-void ord_ins (int v [], int n) {
-	int i, j, x;
-	for (i=1; i<n; i++) {
-		x = v[i];
-		j = i-1;
-		while (j>=0 && v[j]>x) {
-			v[j+1] = v[j];;
-			j--;
-		}
-		v[j+1] = x;
-	}
-}
-
-void intercambiar (int* i, int* j) {
-	int aux;
-	aux = *i;
-	*i = *j;
-	*j = aux;
-}
-
-void Mediana3(int v[], int i, int j) {
-	int k;
-	k = (i + j)/2;
-
-	if (v[k] > v[j]) {
-		intercambiar(&v[k], &v[j]);
-	}
-	if (v[k] > v[i]) {
-		intercambiar(&v[k],&v[i]);
-	}
-	if (v[i] > v[j]) {
-		intercambiar(&v[i], &v[j]);
-	}
-}
-
-void OrdenarAux(int v[], int izq, int der) {
-	int pivote, i, j;
-
-	if ((izq + UMBRAL) <= der) {
-		Mediana3(v, izq, der);
-
-		pivote = v[izq];
-		i = izq;
-		j = der;
-
-		while (j>i) {
-			i++;
-			while (v[i] < pivote) {
-				i++;
-			}
-			j--;
-			while (v[j] > pivote) {
-				j--;
-			}
-			intercambiar(&v[i], &v[j]);
-		}
-
-		intercambiar(&v[i], &v[j]);
-		intercambiar(&v[izq], &v[j]);
-		OrdenarAux(v, izq, j-1);
-		OrdenarAux(v, j+1, der);
-	}
-}
-
-void ord_rapida(int v[], int n) {
-	OrdenarAux(v, 0, n-1);
-	if (UMBRAL > 1){
-		ord_ins(v, n);
-	}
-}
-
-void leerTiempos(const tAlgoritmo algoritmo, double tiempos[]) {
-	int n, i = 0, k;
-	int *v;
+void leerTiempos(tabla_cerrada diccionario, tAlgoritmo disp, resol resolucion, double tiempos[NUM_TIEMPOS]) {
+	int n, i, k, j = 0;
 	double ta, tb, ti, t;
-	int inicio = algoritmo.ini;
-	int fin = algoritmo.fin;
-	int mult = algoritmo.mult;
+	int aleatorio, colisiones = 0;
 
-	for (n = inicio; n <= fin; n = n * mult) {
-		v = malloc(sizeof(int) * n);
-		ascendente(v, n);
+	for (n = disp.ini; n <= disp.fin; n = n * disp.mult) {
 		ta = microsegundos();
-		algoritmo.func(v, n);
+		for (i = 0; i < n; i++) {
+			aleatorio = rand() % MAX_N;
+			buscar_cerrada(diccionario[aleatorio].clave, diccionario, MAX_N, &colisiones, disp.func, resolucion.func);
+		}
 		tb = microsegundos();
 		t = tb - ta;
 
+		ta = microsegundos();
+		for (i = 0; i < n; i++) {
+			aleatorio = rand() % MAX_N;
+		}
+		tb = microsegundos();
+		ti = tb - ta;
+		t = t - ti;
 		if (t < 500) {
 			ta = microsegundos();
 			for (k = 0; k < 1000; k++) {
-				ascendente(v, n);
-				algoritmo.func(v, n);
+				for (i = 0; i < n; i++) {
+					aleatorio = rand() % MAX_N;
+					buscar_cerrada(diccionario[aleatorio].clave, diccionario, MAX_N, &colisiones, disp.func, resolucion.func);
+				}
 			}
 			tb = microsegundos();
 			t = tb - ta;
 
 			ta = microsegundos();
 			for (k = 0; k < 1000; k++) {
-				ascendente(v, n);
+				for (i = 0; i < n; i++) {
+					aleatorio = rand() % MAX_N;
+				}
 			}
 			tb = microsegundos();
 
@@ -303,9 +204,8 @@ void leerTiempos(const tAlgoritmo algoritmo, double tiempos[]) {
 			t = (t - ti) / k;
 
 		}
-		tiempos[i] = t;
-		i++;
-		free(v);
+		tiempos[j] = t;
+		j++;
 	}
 }
 
@@ -338,6 +238,46 @@ void test(unsigned int (*resol_colision)(int, int)) {
 
 	printf("\n");
 	free(diccionario);
+}
+
+int insertarDatos(item datos[], tabla_cerrada *diccionario, tAlgoritmo dispersion, resol resolucion) {
+	int colisiones = 0, i, insertar;
+
+	printf("Insertando %d elementos... ", NUM_ENTRADAS);
+
+	for (i = 0; i < NUM_ENTRADAS; i++) {
+		if ((insertar = insertar_cerrada(datos[i].clave, datos[i].sinonimos, diccionario, MAX_N, dispersion.func, resolucion.func)) >=0)
+			colisiones += insertar;
+		else {
+			printf("No se han podido insertar los datos\n");
+			return 0;
+		}
+	}
+
+	printf("Numero total de colisiones: %d\n", colisiones);
+	return 1;
+}
+
+void mostrarTiempos(tAlgoritmo algoritmo, double tiempos[], cota_t cotas[]) {
+	int n, i = 0, j;
+	char print[261];
+
+	printf("%12s\t%12s\t", "n", "t(n)");
+	for (j = 0; j < 3; j++) {
+		sprintf(print, "t(n)/%s", cotas[j].name);
+		printf(" %17s\t", print);
+	}
+	printf("\n");
+
+	for (n = algoritmo.ini; n <= algoritmo.fin; n = n * algoritmo.mult) {
+		if (tiempos[i] < 500)
+			printf("(*)%9d\t%12.3f\t\t%.8f\t\t%.8f\t\t%.8f\n", n, tiempos[i], tiempos[i]/execute(cotas[0], n, 0),
+					tiempos[i]/execute(cotas[1], n, 0), tiempos[i]/execute(cotas[2], n, 0));
+		else
+			printf("%12d\t%12.3f\t\t%.8f\t\t%.8f\t\t%.8f\n", n, tiempos[i], tiempos[i]/execute(cotas[0], n, 0),
+				   tiempos[i]/execute(cotas[1], n, 0), tiempos[i]/execute(cotas[2], n, 0));
+		i++;
+	}
 }
 
 int main() {
@@ -409,13 +349,61 @@ int main() {
 	free(cotasEstudio);
 	return 0;*/
 	tabla_cerrada diccionario;
+	item *datos;
+	int i, j, nCotas;
+	double tiempos[NUM_TIEMPOS];
+	cota_t funcs[NUM_FUNCT];
+	cota_t *cotasEstudio;
+	cotasEstudio = malloc(sizeof(cota_t)*100);
+	cota_t cotasFinales[3];
+
+	resol resolucion[] = {
+			{"lineal", resolN},
+			{"cuadratica", resolCuadratica},
+			{"doble", resolDoble},
+			{NULL, NULL}
+	};
+
+	tAlgoritmo dispersiones[] = {
+			{"dispersion A", dispersionA, 125, 16000, 2},
+			{"dispersion B", dispersionB, 125, 16000, 2},
+			{NULL, NULL, 0, 0, 0}
+	};
+
 	test(resolN);
 	test(resolCuadratica);
-	test(resolDoble);
 
-	/*diccionario = malloc(MAX_N*sizeof(entrada));
-	inicializar_cerrada(&diccionario, MAX_N);
-	leer_sinonimos(&diccionario);*/
+	diccionario = malloc(MAX_N*sizeof(entrada));
 
-	//free(diccionario);
+	datos = malloc(NUM_ENTRADAS* sizeof(item));
+	leer_sinonimos(datos);
+
+	inicializar_semilla();
+
+	initFuncs(funcs);
+	printFuncs(funcs);
+	initCotas(funcs, cotasEstudio, &nCotas);
+	printCotas(cotasEstudio, nCotas);
+	sortCotas(cotasEstudio, nCotas);
+	printCotas(cotasEstudio, nCotas);
+
+	for (j = 0; dispersiones[j].nombre != NULL; j++) {
+		for (i = 0; resolucion[i].nombre != NULL; i++) {
+			inicializar_cerrada(&diccionario, MAX_N);
+			printf("***Dispersion cerrada %s con %s\n", resolucion[i].nombre, dispersiones[j].nombre);
+			if (insertarDatos(datos, &diccionario, dispersiones[j], resolucion[i])) {
+				printf("Buscando n elementos...\n");
+				leerTiempos(diccionario, dispersiones[j], resolucion[i], tiempos);
+				while (!conseguirCotas(dispersiones[j], tiempos, cotasEstudio, 0, nCotas, cotasFinales)) {
+					leerTiempos(diccionario, dispersiones[j], resolucion[i], tiempos);
+				}
+				mostrarTiempos(dispersiones[j], tiempos, cotasFinales);
+			}
+			printf("\n");
+		}
+	}
+
+	free(cotasEstudio);
+	free(diccionario);
+	free(datos);
 }
