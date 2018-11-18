@@ -2,7 +2,7 @@
 #include <string.h>
 
 // Constantes Algoritmo Dicotomia
-#define UMBRAL_DICO 0.06
+#define UMBRAL_DICO 0.08
 #define NUM_SITUATIONS 3
 
 #define NUM_ALGORITHEMS 2

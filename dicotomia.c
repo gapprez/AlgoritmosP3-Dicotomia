@@ -139,7 +139,7 @@ void sortCotas(cota_t *cotas, int nCotas) {
 }
 
 int conseguirCotas (tAlgoritmo algoritmo, double tiempos[], cota_t* cotas, int inicio, int fin, cota_t cotasFinales[3]) {
-	int i = 0, b = 1, medio, n, fallo = 0;
+	int i = 0, medio, n, fallo = 0;
 	double valoresn[NUM_TIEMPOS];
 	cota_t cotaM;
 	double divisionAct, divisionAnt;
@@ -155,30 +155,33 @@ int conseguirCotas (tAlgoritmo algoritmo, double tiempos[], cota_t* cotas, int i
 		}
 
 		i = 1;
-		while (b && i < NUM_TIEMPOS) {
+		while (i < NUM_TIEMPOS) {
 				divisionAnt = valoresn[i-1];
 				divisionAct = valoresn[i];
 				if ((divisionAct< divisionAnt-divisionAnt*UMBRAL_DICO) || (divisionAct>divisionAnt+divisionAnt*UMBRAL_DICO))
-					if (fallo == MAX_FALLOS) {
-						b = 0;
-					}
-					else {
-						fallo++;
-						i++;
-					}
-				else
-					i++;
+					fallo++;
+				i++;
 		}
 
 		divisionPri = valoresn[0];
 		divisionUlt = valoresn[NUM_TIEMPOS-1];
 
-		if (!b) {
-			if (fin >= inicio) {
-				if (divisionUlt< divisionPri-divisionPri*UMBRAL_DICO)
-					conseguirCotas(algoritmo, tiempos, cotas, inicio, medio - 1, cotasFinales);
-				else if (divisionUlt > divisionPri + divisionPri*UMBRAL_DICO)
-					conseguirCotas(algoritmo, tiempos, cotas, medio + 1, fin, cotasFinales);
+		if (fallo > MAX_FALLOS) { //Segunda oportunidad
+			if (divisionUlt< divisionPri-divisionPri*UMBRAL_DICO)
+				return conseguirCotas(algoritmo, tiempos, cotas, inicio, medio - 1, cotasFinales);
+			else if (divisionUlt > divisionPri + divisionPri*UMBRAL_DICO)
+				return conseguirCotas(algoritmo, tiempos, cotas, medio + 1, fin, cotasFinales);
+			else { //Está dentro del rango
+				if (fallo >= NUM_TIEMPOS-NUM_TIEMPOS*0.5) { //Se desestima cota debido a la cantidad de fallos
+					divisionUlt = valoresn[NUM_TIEMPOS-2];
+					divisionPri = valoresn[1];
+					if (divisionUlt < divisionPri-divisionPri*UMBRAL_DICO)
+						return conseguirCotas(algoritmo, tiempos, cotas, inicio, medio - 1, cotasFinales);
+					else if (divisionUlt > divisionPri+divisionPri*UMBRAL_DICO)
+						return conseguirCotas(algoritmo, tiempos, cotas, medio + 1, fin, cotasFinales);
+					else
+						return 0;
+				}
 				else {
 					cotasFinales[0] = cotas[medio - 1];
 					cotasFinales[1] = cotas[medio];
@@ -186,8 +189,17 @@ int conseguirCotas (tAlgoritmo algoritmo, double tiempos[], cota_t* cotas, int i
 					return 1;
 				}
 			}
+		}
+		else if (fallo == MAX_FALLOS) { //Si tiene MAX_FALLOS, comprobación final con un umbral mayor
+			if (divisionUlt< divisionPri-divisionPri*(UMBRAL_DICO + 0.1))
+				return conseguirCotas(algoritmo, tiempos, cotas, inicio, medio - 1, cotasFinales);
+			else if (divisionUlt > divisionPri + divisionPri*(UMBRAL_DICO + 0.1))
+				return conseguirCotas(algoritmo, tiempos, cotas, medio + 1, fin, cotasFinales);
 			else {
-				return 0;
+				cotasFinales[0] = cotas[medio - 1];
+				cotasFinales[1] = cotas[medio];
+				cotasFinales[2] = cotas[medio + 1];
+				return 1;
 			}
 		}
 		else {
