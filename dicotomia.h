@@ -2,10 +2,13 @@
 #include <string.h>
 
 // Constantes Algoritmo Dicotomia
-#define UMBRAL_DICO 0.08
-#define NUM_SITUATIONS 3
-
-#define NUM_ALGORITHEMS 2
+#ifndef UMBRAL_MAX
+#define UMBRAL_MAX 0.08
+#endif
+#ifndef UMBRAL_MIN
+#define UMBRAL_MIN 0.01
+#endif
+#define EXP_MAX 3.0
 #define NUM_FUNCT 2
 #ifndef NUM_TIEMPOS
 #define NUM_TIEMPOS 8
@@ -41,3 +44,4 @@ void initCotas(cota_t funcs[], cota_t *cotas, int *nCotas);
 void sortCotas(cota_t *cotas, int nCotas);
 void printCotas(cota_t *cotas, int nCotas);
 int conseguirCotas (tAlgoritmo algoritmo, double tiempos[], cota_t* cotas, int inicio, int fin, cota_t cotasFinales[3]);
+void mostrarTiempos(tAlgoritmo algoritmo, double tiempos[], cota_t cotas[]);

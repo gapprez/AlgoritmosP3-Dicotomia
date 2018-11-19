@@ -12,8 +12,6 @@
 #define MAX_N 38197
 #define NUM_ENTRADAS 19062
 
-#define UMBRAL 10
-
 typedef int pos;
 
 typedef struct entrada_ {
@@ -258,33 +256,11 @@ int insertarDatos(item datos[], tabla_cerrada *diccionario, tAlgoritmo dispersio
 	return 1;
 }
 
-void mostrarTiempos(tAlgoritmo algoritmo, double tiempos[], cota_t cotas[]) {
-	int n, i = 0, j;
-	char print[261];
-
-	printf("%12s\t%12s\t", "n", "t(n)");
-	for (j = 0; j < 3; j++) {
-		sprintf(print, "t(n)/%s", cotas[j].name);
-		printf(" %17s\t", print);
-	}
-	printf("\n");
-
-	for (n = algoritmo.ini; n <= algoritmo.fin; n = n * algoritmo.mult) {
-		if (tiempos[i] < 500)
-			printf("(*)%9d\t%12.3f\t\t%.8f\t\t%.8f\t\t%.8f\n", n, tiempos[i], tiempos[i]/execute(cotas[0], n, 0),
-					tiempos[i]/execute(cotas[1], n, 0), tiempos[i]/execute(cotas[2], n, 0));
-		else
-			printf("%12d\t%12.3f\t\t%.8f\t\t%.8f\t\t%.8f\n", n, tiempos[i], tiempos[i]/execute(cotas[0], n, 0),
-				   tiempos[i]/execute(cotas[1], n, 0), tiempos[i]/execute(cotas[2], n, 0));
-		i++;
-	}
-}
-
 int main() {
 
 	tabla_cerrada diccionario;
 	item *datos;
-	int i, j, nCotas;
+	int i, j, b, nCotas;
 	double tiempos[NUM_TIEMPOS];
 	cota_t funcs[NUM_FUNCT];
 	cota_t *cotasEstudio;
@@ -328,8 +304,11 @@ int main() {
 			if (insertarDatos(datos, &diccionario, dispersiones[j], resolucion[i])) {
 				printf("Buscando n elementos...\n");
 				leerTiempos(diccionario, dispersiones[j], resolucion[i], tiempos);
-				while (!conseguirCotas(dispersiones[j], tiempos, cotasEstudio, 0, nCotas, cotasFinales)) {
-					leerTiempos(diccionario, dispersiones[j], resolucion[i], tiempos);
+				b = conseguirCotas(dispersiones[j], tiempos, cotasEstudio, 0, nCotas, cotasFinales);
+				while (b < 1) {
+					if (b == -1)
+						leerTiempos(diccionario, dispersiones[j], resolucion[i], tiempos);
+					b = conseguirCotas(dispersiones[j], tiempos, cotasEstudio, 0, nCotas, cotasFinales);
 				}
 				mostrarTiempos(dispersiones[j], tiempos, cotasFinales);
 			}
